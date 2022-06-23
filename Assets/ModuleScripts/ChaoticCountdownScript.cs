@@ -68,7 +68,7 @@ public class ChaoticCountdownScript : ModuleScript
 
         for (int i = 0; i < _usableNumbers.Length; i++)
         {
-            _usableNumbers[i] = _Rnd.Next(1, 10000);
+            _usableNumbers[i] = _Rnd.Next(1, 512);
             _Numbers[i].text = _usableNumbers[i].ToString();
         }
 
