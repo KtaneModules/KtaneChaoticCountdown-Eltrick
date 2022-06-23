@@ -201,6 +201,7 @@ public class ChaoticCountdownScript : ModuleScript
                 PlaySound(_Module.transform, false, _Sounds[0]);
             }
             _equationsUsed++;
+            _operatorPressedPosition = 4;
             _isFirstNumberDetermined = false;
         }
     }
@@ -297,14 +298,14 @@ public class ChaoticCountdownScript : ModuleScript
                     yield return "sendtochaterror The module must be started before operations can be performed!";
                     yield break;
                 }
+                int[] stored = new int[2];
                 bool found = false;
                 for (int j = 0; j < _Numbers.Length; j++)
                 {
                     if (_Numbers[j].text == split[0])
                     {
                         found = true;
-                        _NumberButtons[j].OnInteract();
-                        yield return new WaitForSeconds(0.1f);
+                        stored[0] = j;
                         break;
                     }
                 }
@@ -313,6 +314,23 @@ public class ChaoticCountdownScript : ModuleScript
                     yield return "sendtochaterror The specified operation '" + parameters[i] + "' has a number not present on the module!";
                     yield break;
                 }
+                found = false;
+                for (int j = 0; j < _Numbers.Length; j++)
+                {
+                    if (_Numbers[j].text == split[1])
+                    {
+                        found = true;
+                        stored[1] = j;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    yield return "sendtochaterror The specified operation '" + parameters[i] + "' has a number not present on the module!";
+                    yield break;
+                }
+                _NumberButtons[stored[0]].OnInteract();
+                yield return new WaitForSeconds(0.1f);
                 char[] operators = { '+', '-', '*', '/' };
                 for (int k = 0; k < operators.Length; k++)
                 {
@@ -323,22 +341,8 @@ public class ChaoticCountdownScript : ModuleScript
                         break;
                     }
                 }
-                found = false;
-                for (int j = 0; j < _Numbers.Length; j++)
-                {
-                    if (_Numbers[j].text == split[1])
-                    {
-                        found = true;
-                        _NumberButtons[j].OnInteract();
-                        yield return new WaitForSeconds(0.1f);
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    yield return "sendtochaterror The specified operation '" + parameters[i] + "' has a number not present on the module!";
-                    yield break;
-                }
+                _NumberButtons[stored[1]].OnInteract();
+                yield return new WaitForSeconds(0.1f);
             }
             else
             {
