@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using KModkit;
 using KeepCoding;
 using UnityEngine;
 using Rnd = UnityEngine.Random;
@@ -30,8 +29,7 @@ public class ChaoticCountdownScript : ModuleScript
     private AudioSource _Clock;
 
     private bool _isModuleSolved, _isSeedSet, _isTimerActive, _isOperatorAdded, _isFirstNumberDetermined;
-    private int _seed, _pressedPosition = 13, _secondPressedPosition, _operatorPressedPosition, _equationsUsed = 0;
-    private float _timePassed;
+    private int _seed, _pressedPosition = 13, _secondPressedPosition, _operatorPressedPosition = 4, _equationsUsed = 0, _depth;
     private ulong _result, _firstPress, _secondPress;
     private int[] _usableNumbers = new int[7];
     private List<int[]> _AllPermutations = new List<int[]>();
@@ -102,10 +100,10 @@ public class ChaoticCountdownScript : ModuleScript
         for (int i = 0; i < _chosenOperations.Length; i++)
             _chosenOperations[i] = _AllOperations.ToArray()[chosenOperationOrder][i];
 
-        int depth = _Rnd.Next(2, 6);
+        _depth = _Rnd.Next(2, 6);
 
         _result = _chosenNumbers[0];
-        for (int i = 0; i < depth; i++)
+        for (int i = 0; i < _depth; i++)
             _result = Operate(_result, _chosenNumbers[i + 1], _chosenOperations[i]);
 
         if (_result > 999999 || _result < 0)
@@ -114,28 +112,28 @@ public class ChaoticCountdownScript : ModuleScript
         _TargetNumber.text = _result.ToString();
 
         string chosenOperationLogging = "";
-        for (int i = 0; i < depth; i++)
+        for (int i = 0; i < _depth; i++)
         {
             switch (_chosenOperations[i])
             {
                 case 0:
                     chosenOperationLogging += "+";
-                    if (i != depth - 1)
+                    if (i != _depth - 1)
                         chosenOperationLogging += ", ";
                     break;
                 case 1:
                     chosenOperationLogging += "-";
-                    if (i != depth - 1)
+                    if (i != _depth - 1)
                         chosenOperationLogging += ", ";
                     break;
                 case 2:
                     chosenOperationLogging += "×";
-                    if (i != depth - 1)
+                    if (i != _depth - 1)
                         chosenOperationLogging += ", ";
                     break;
                 case 3:
                     chosenOperationLogging += "÷";
-                    if (i != depth - 1)
+                    if (i != _depth - 1)
                         chosenOperationLogging += ", ";
                     break;
             }
@@ -209,8 +207,10 @@ public class ChaoticCountdownScript : ModuleScript
 
     private void OperatorPress(int operatorPosition)
     {
-        if(_isFirstNumberDetermined)
+        if(_isFirstNumberDetermined && _operatorPressedPosition != operatorPosition)
         {
+            if (_isOperatorAdded)
+                _OperatorButtons[_operatorPressedPosition].GetComponentInChildren<TextMesh>().color = new Color32(51, 51, 51, 255);
             _operatorPressedPosition = operatorPosition;
             ButtonEffect(_OperatorButtons[_operatorPressedPosition], 0.1f, KMSoundOverride.SoundEffect.ButtonPress);
             _OperatorButtons[_operatorPressedPosition].GetComponentInChildren<TextMesh>().color = new Color32(255, 51, 51, 255);
@@ -224,15 +224,14 @@ public class ChaoticCountdownScript : ModuleScript
         {
             ButtonEffect(_StartButton, 0.1f, KMSoundOverride.SoundEffect.ButtonPress);
             _Clock.Play();
-            StartCoroutine(ClockRoutine());
             _isTimerActive = true;
+            StartCoroutine(ClockRoutine());
             Log("The timer has been activated!");
         }
     }
 
     private IEnumerator ClockRoutine()
     {
-        _isTimerActive = true;
         yield return new WaitForSeconds(31f);
         if(!_isModuleSolved)
         {
@@ -243,8 +242,165 @@ public class ChaoticCountdownScript : ModuleScript
             _isSeedSet = false;
             _AllPermutations.Clear();
             _AllOperations.Clear();
+            _pressedPosition = 13;
+            _operatorPressedPosition = 4;
+            _isFirstNumberDetermined = false;
             Start();
             _isTimerActive = false;
+        }
+    }
+
+    //twitch plays
+    #pragma warning disable 414
+    private readonly string TwitchHelpMessage = @"!{0} go/activate [Presses the blank square button] | !{0} 136 * 4128 [Performs the specified operation] | Commands are chainable with semicolons";
+    #pragma warning restore 414
+    IEnumerator ProcessTwitchCommand(string command)
+    {
+        command = command.Replace(" ", "").Replace("×", "*").Replace("÷", "/").ToLower();
+        string[] parameters = command.Split(';');
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            if (parameters[i].EqualsAny("go", "activate"))
+            {
+                yield return null;
+                if (_isTimerActive)
+                {
+                    yield return "sendtochaterror The module has already been started!";
+                    yield break;
+                }
+                yield return "strike";
+                _StartButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            else if (parameters[i].Contains("+") || parameters[i].Contains("-") || parameters[i].Contains("*") || parameters[i].Contains("/"))
+            {
+                string[] split = parameters[i].Split('+', '-', '*', '/');
+                if (split.Length != 2)
+                {
+                    yield return "sendtochaterror!f The specified operation '" + parameters[i] + "' should include exactly two numbers and one operator!";
+                    yield break;
+                }
+                ulong temp1;
+                ulong temp2;
+                if (!ulong.TryParse(split[0], out temp1) || !ulong.TryParse(split[1], out temp2))
+                {
+                    yield return "sendtochaterror!f The specified operation '" + parameters[i] + "' has at least one invalid number!";
+                    yield break;
+                }
+                if (temp1 < 0 || temp2 < 0)
+                {
+                    yield return "sendtochaterror!f The specified operation '" + parameters[i] + "' has at least one invalid number!";
+                    yield break;
+                }
+                if (!_isTimerActive)
+                {
+                    yield return "sendtochaterror The module must be started before operations can be performed!";
+                    yield break;
+                }
+                bool found = false;
+                for (int j = 0; j < _Numbers.Length; j++)
+                {
+                    if (_Numbers[j].text == split[0])
+                    {
+                        found = true;
+                        _NumberButtons[j].OnInteract();
+                        yield return new WaitForSeconds(0.1f);
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    yield return "sendtochaterror The specified operation '" + parameters[i] + "' has a number not present on the module!";
+                    yield break;
+                }
+                char[] operators = { '+', '-', '*', '/' };
+                for (int k = 0; k < operators.Length; k++)
+                {
+                    if (parameters[i].Contains(operators[k]))
+                    {
+                        _OperatorButtons[k].OnInteract();
+                        yield return new WaitForSeconds(0.1f);
+                        break;
+                    }
+                }
+                found = false;
+                for (int j = 0; j < _Numbers.Length; j++)
+                {
+                    if (_Numbers[j].text == split[1])
+                    {
+                        found = true;
+                        _NumberButtons[j].OnInteract();
+                        yield return new WaitForSeconds(0.1f);
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    yield return "sendtochaterror The specified operation '" + parameters[i] + "' has a number not present on the module!";
+                    yield break;
+                }
+            }
+            else
+            {
+                yield return "sendtochaterror!f The specified command '" + parameters[i] + "' is invalid!";
+                yield break;
+            }
+            yield return new WaitForSeconds(0.25f);
+        }
+    }
+
+    IEnumerator TwitchHandleForcedSolve()
+    {
+        bool bad = false;
+        for (int i = 0; i < _Equations.Length; i++)
+        {
+            if (_Equations[i].text != "")
+            {
+                bad = true;
+                break;
+            }
+        }
+        if (_isTimerActive && (bad || _isFirstNumberDetermined))
+        {
+            _isModuleSolved = true;
+            StopCoroutine(ClockRoutine());
+            _Clock.Stop();
+            _Module.HandlePass();
+            yield break;
+        }
+        if (!_isTimerActive)
+        {
+            _StartButton.OnInteract();
+            yield return new WaitForSeconds(0.1f);
+        }
+        ulong prevUsed = _chosenNumbers[0];
+        for (int i = 0; i < _depth; i++)
+        {
+            for (int j = 0; j < _Numbers.Length; j++)
+            {
+                if (_Numbers[j].text == prevUsed.ToString())
+                {
+                    _NumberButtons[j].OnInteract();
+                    yield return new WaitForSeconds(0.1f);
+                    break;
+                }
+            }
+            _OperatorButtons[_chosenOperations[i]].OnInteract();
+            yield return new WaitForSeconds(0.1f);
+            for (int j = 0; j < _Numbers.Length; j++)
+            {
+                if (_Numbers[j].text == _chosenNumbers[i + 1].ToString())
+                {
+                    _NumberButtons[j].OnInteract();
+                    yield return new WaitForSeconds(0.1f);
+                    break;
+                }
+            }
+            if (i != _depth - 1)
+            {
+                prevUsed = Operate(prevUsed, _chosenNumbers[i + 1], _chosenOperations[i]);
+                yield return new WaitForSeconds(0.25f);
+            }
         }
     }
 }
