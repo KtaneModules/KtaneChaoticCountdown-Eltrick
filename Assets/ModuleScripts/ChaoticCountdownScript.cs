@@ -31,9 +31,7 @@ public class ChaoticCountdownScript : ModuleScript
     private bool _isModuleSolved, _isSeedSet, _isTimerActive, _isOperatorAdded, _isFirstNumberDetermined;
     private int _seed, _pressedPosition = 13, _secondPressedPosition, _operatorPressedPosition = 4, _equationsUsed = 0, _depth;
     private ulong _result, _firstPress, _secondPress;
-    private int[] _usableNumbers = new int[7];
-    private List<int[]> _AllPermutations = new List<int[]>();
-    private List<int[]> _AllOperations = new List<int[]>();
+    private ulong[] _usableNumbers = new ulong[7];
     private ulong[] _chosenNumbers = new ulong[7];
     private int[] _chosenOperations = new int[6];
 
@@ -68,46 +66,34 @@ public class ChaoticCountdownScript : ModuleScript
 
         for (int i = 0; i < _usableNumbers.Length; i++)
         {
-            _usableNumbers[i] = _Rnd.Next(1, 512);
+            _usableNumbers[i] = (ulong)_Rnd.Next(1, 512);
             _Numbers[i].text = _usableNumbers[i].ToString();
         }
 
         for (int i = 0; i < _Equations.Length; i++)
             _Equations[i].text = "";
 
-        for (int i = 0; i < 5040; i++)
+        do
         {
-            int[] permutedNumbers = _usableNumbers.OrderBy(x => _Rnd.Next()).ToArray();
-            if (!_AllPermutations.Contains(permutedNumbers))
-                _AllPermutations.Add(permutedNumbers);
-        }
+            for (int j = 0; j < _chosenOperations.Length; j++)
+            {
+                int weighting = _Rnd.Next(0, 100);
+                if (weighting < 73)
+                    _chosenOperations[j] = 3;
+                else
+                    _chosenOperations[j] = _Rnd.Next(0, 3);
+            }
 
-        for(int i = 0; i < 4096; i++)
-        {
-            int[] permutedOperations = new int[6];
-            for(int j = 0; j < permutedOperations.Length; j++)
-                permutedOperations[j] = _Rnd.Next(0, 4);
-            if(!_AllOperations.Contains(permutedOperations))
-                _AllOperations.Add(permutedOperations);
-        }
+            for (int i = 0; i < _chosenNumbers.Length; i++)
+                _chosenNumbers = _usableNumbers.Shuffle();
 
-        int chosenNumberOrder = _Rnd.Next(0, 5040);
-        for (int i = 0; i < _chosenNumbers.Length; i++)
-            _chosenNumbers[i] = (ulong)_AllPermutations.ToArray()[chosenNumberOrder][i];
+            _depth = _Rnd.Next(2, 6);
 
-        tryAgain:
-        int chosenOperationOrder = _Rnd.Next(0, 4096);
-        for (int i = 0; i < _chosenOperations.Length; i++)
-            _chosenOperations[i] = _AllOperations.ToArray()[chosenOperationOrder][i];
+            _result = _chosenNumbers[0];
+            for (int i = 0; i < _depth; i++)
+                _result = Operate(_result, _chosenNumbers[i + 1], _chosenOperations[i]);
 
-        _depth = _Rnd.Next(2, 6);
-
-        _result = _chosenNumbers[0];
-        for (int i = 0; i < _depth; i++)
-            _result = Operate(_result, _chosenNumbers[i + 1], _chosenOperations[i]);
-
-        if (_result > 999999 || _result < 0)
-            goto tryAgain;
+        } while (_result > 999999 || _result < 0);
 
         _TargetNumber.text = _result.ToString();
 
@@ -148,7 +134,7 @@ public class ChaoticCountdownScript : ModuleScript
 
     private ulong Operate(ulong a, ulong b, int op)
     {
-        switch(op)
+        switch (op)
         {
             case 0:
                 return (a + b);
@@ -201,6 +187,7 @@ public class ChaoticCountdownScript : ModuleScript
                 PlaySound(_Module.transform, false, _Sounds[0]);
             }
             _equationsUsed++;
+            _pressedPosition = 13;
             _operatorPressedPosition = 4;
             _isFirstNumberDetermined = false;
         }
@@ -208,7 +195,7 @@ public class ChaoticCountdownScript : ModuleScript
 
     private void OperatorPress(int operatorPosition)
     {
-        if(_isFirstNumberDetermined && _operatorPressedPosition != operatorPosition)
+        if (_isFirstNumberDetermined && _operatorPressedPosition != operatorPosition)
         {
             if (_isOperatorAdded)
                 _OperatorButtons[_operatorPressedPosition].GetComponentInChildren<TextMesh>().color = new Color32(51, 51, 51, 255);
@@ -221,7 +208,7 @@ public class ChaoticCountdownScript : ModuleScript
 
     private void StartTimer()
     {
-        if(!_isTimerActive)
+        if (!_isTimerActive)
         {
             ButtonEffect(_StartButton, 0.1f, KMSoundOverride.SoundEffect.ButtonPress);
             _Clock.Play();
@@ -234,7 +221,7 @@ public class ChaoticCountdownScript : ModuleScript
     private IEnumerator ClockRoutine()
     {
         yield return new WaitForSeconds(31f);
-        if(!_isModuleSolved)
+        if (!_isModuleSolved)
         {
             Log("The time has run out!");
             _Module.HandleStrike();
@@ -243,8 +230,6 @@ public class ChaoticCountdownScript : ModuleScript
             if (_operatorPressedPosition != 4)
                 _OperatorButtons[_operatorPressedPosition].GetComponentInChildren<TextMesh>().color = new Color32(51, 51, 51, 255);
             _isSeedSet = false;
-            _AllPermutations.Clear();
-            _AllOperations.Clear();
             _pressedPosition = 13;
             _operatorPressedPosition = 4;
             _isFirstNumberDetermined = false;
@@ -256,9 +241,9 @@ public class ChaoticCountdownScript : ModuleScript
     }
 
     //twitch plays
-    #pragma warning disable 414
+#pragma warning disable 414
     private readonly string TwitchHelpMessage = @"!{0} go/activate [Presses the blank square button] | !{0} 136 * 4128 [Performs the specified operation] | Commands are chainable with semicolons";
-    #pragma warning restore 414
+#pragma warning restore 414
     IEnumerator ProcessTwitchCommand(string command)
     {
         command = command.Replace(" ", "").Replace("×", "*").Replace("÷", "/").ToLower();
