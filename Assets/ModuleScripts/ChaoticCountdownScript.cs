@@ -143,12 +143,11 @@ public class ChaoticCountdownScript : ModuleScript
             case 2:
                 return a * b;
             case 3:
-                if (a % b == 0)
-                    return a / b;
-                else if (b % a == 0)
-                    return b / a;
-                else
-                    return Math.Max(a, b) % Math.Min(a, b);
+                if (Math.Min(a, b) == 0)
+                    return 0;
+                if (Math.Max(a, b) % Math.Min(a, b) == 0)
+                    return Math.Max(a, b) / Math.Min(a, b);
+                return Math.Max(a, b) % Math.Min(a, b);
         }
         return 0;
     }
@@ -306,7 +305,7 @@ public class ChaoticCountdownScript : ModuleScript
                 found = false;
                 for (int j = 0; j < _Numbers.Length; j++)
                 {
-                    if (_Numbers[j].text == split[1])
+                    if (_Numbers[j].text == split[1] && j != stored[0])
                     {
                         found = true;
                         stored[1] = j;
@@ -369,10 +368,12 @@ public class ChaoticCountdownScript : ModuleScript
         ulong prevUsed = _chosenNumbers[0];
         for (int i = 0; i < _depth; i++)
         {
+            int dangItEltrick = -1;
             for (int j = 0; j < _Numbers.Length; j++)
             {
                 if (_Numbers[j].text == prevUsed.ToString())
                 {
+                    dangItEltrick = j;
                     _NumberButtons[j].OnInteract();
                     yield return new WaitForSeconds(0.1f);
                     break;
@@ -382,18 +383,17 @@ public class ChaoticCountdownScript : ModuleScript
             yield return new WaitForSeconds(0.1f);
             for (int j = 0; j < _Numbers.Length; j++)
             {
-                if (_Numbers[j].text == _chosenNumbers[i + 1].ToString())
+                if (_Numbers[j].text == _chosenNumbers[i + 1].ToString() && j != dangItEltrick)
                 {
                     _NumberButtons[j].OnInteract();
                     yield return new WaitForSeconds(0.1f);
                     break;
                 }
             }
-            if (i != _depth - 1)
-            {
-                prevUsed = Operate(prevUsed, _chosenNumbers[i + 1], _chosenOperations[i]);
-                yield return new WaitForSeconds(0.25f);
-            }
+            if (_isModuleSolved)
+                yield break;
+            prevUsed = Operate(prevUsed, _chosenNumbers[i + 1], _chosenOperations[i]);
+            yield return new WaitForSeconds(0.25f);
         }
     }
 }
