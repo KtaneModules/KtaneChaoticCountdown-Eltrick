@@ -16,6 +16,6 @@ MonoBehaviour:
   author: Eltrick
   description: It's like Countdown, except subtraction doesn't care which number is
     first, and division is extremely scuffed.
-  version: 1.55.69
+  version: 1.56.74
   outputFolder: build
   previewImage: {fileID: 2800000, guid: 971fff2213542584b96977b4135728d6, type: 3}

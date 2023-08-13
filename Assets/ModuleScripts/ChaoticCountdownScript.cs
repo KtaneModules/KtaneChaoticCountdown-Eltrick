@@ -76,13 +76,7 @@ public class ChaoticCountdownScript : ModuleScript
         do
         {
             for (int j = 0; j < _chosenOperations.Length; j++)
-            {
-                int weighting = _Rnd.Next(0, 100);
-                if (weighting < 73)
-                    _chosenOperations[j] = 3;
-                else
-                    _chosenOperations[j] = _Rnd.Next(0, 3);
-            }
+                _chosenOperations[j] = _Rnd.Next(0, 3);
 
             for (int i = 0; i < _chosenNumbers.Length; i++)
                 _chosenNumbers = _usableNumbers.Shuffle();
